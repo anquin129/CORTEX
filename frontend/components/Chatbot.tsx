@@ -74,11 +74,14 @@ export default function Chatbot() {
     const [error, setError] = useState(null);
     const textareaRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
 
     const selectedModelData = models.find((m) => m.id === model);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     }, [messages, status]);
 
     const sendMessage = async (message) => {
@@ -173,7 +176,7 @@ export default function Chatbot() {
             </div>
 
             {/* Messages Container */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                         <div className="text-center space-y-2">
