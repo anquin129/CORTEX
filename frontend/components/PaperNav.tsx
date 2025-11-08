@@ -101,7 +101,6 @@ export default function PaperNav({
                     ))}
                 </ul>
             )}
-            {/* File Upload - Moved to bottom */}
             {isOpen && (
                 <div className="p-3 border-t border-gray-200">
                     <Input
