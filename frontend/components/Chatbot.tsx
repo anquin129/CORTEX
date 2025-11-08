@@ -1,24 +1,101 @@
 'use client';
+import {
+    ModelSelector,
+    ModelSelectorContent,
+    ModelSelectorEmpty,
+    ModelSelectorGroup,
+    ModelSelectorInput,
+    ModelSelectorItem,
+    ModelSelectorList,
+    ModelSelectorLogo,
+    ModelSelectorLogoGroup,
+    ModelSelectorName,
+    ModelSelectorTrigger,
+} from "@/components/ai-elements/model-selector";
+import {
+    PromptInput,
+    PromptInputAttachment,
+    PromptInputAttachments,
+    PromptInputBody,
+    PromptInputButton,
+    PromptInputFooter,
+    PromptInputProvider,
+    PromptInputSpeechButton,
+    PromptInputSubmit,
+    PromptInputTextarea,
+    PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
+import {useRef, useState} from "react";
+import {useChat} from "@ai-sdk/react";
+import {DefaultChatTransport} from "ai";
+import {CheckIcon} from "lucide-react";
 
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
-import { useState } from 'react';
+const models = [
+    {
+        id: "gpt-4o",
+        name: "GPT-4o",
+        chef: "OpenAI",
+        chefSlug: "openai",
+        providers: ["openai", "azure"],
+    },
+    {
+        id: "gpt-4o-mini",
+        name: "GPT-4o Mini",
+        chef: "OpenAI",
+        chefSlug: "openai",
+        providers: ["openai", "azure"],
+    },
+    {
+        id: "claude-opus-4-20250514",
+        name: "Claude 4 Opus",
+        chef: "Anthropic",
+        chefSlug: "anthropic",
+        providers: ["anthropic", "azure", "google", "amazon-bedrock"],
+    },
+    {
+        id: "claude-sonnet-4-20250514",
+        name: "Claude 4 Sonnet",
+        chef: "Anthropic",
+        chefSlug: "anthropic",
+        providers: ["anthropic", "azure", "google", "amazon-bedrock"],
+    },
+    {
+        id: "gemini-2.0-flash-exp",
+        name: "Gemini 2.0 Flash",
+        chef: "Google",
+        chefSlug: "google",
+        providers: ["google"],
+    },
+];
 
 export default function Chatbot() {
+    const [model, setModel] = useState(models[0].id);
+    const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+    const textareaRef = useRef(null);
+
     const { messages, sendMessage, status, stop, reload, error, setMessages } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/chat',
         }),
+        body: {
+            model: model,
+        },
     });
 
-    const [input, setInput] = useState('');
+    const selectedModelData = models.find((m) => m.id === model);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (input.trim() && status === 'ready') {
-            sendMessage({ text: input });
-            setInput('');
+    const handleSubmit = (message) => {
+        const hasText = Boolean(message.text);
+        const hasAttachments = Boolean(message.files?.length);
+
+        if (!(hasText || hasAttachments)) {
+            return;
         }
+
+        sendMessage({
+            text: message.text,
+            files: message.files,
+        });
     };
 
     const handleDelete = (id) => {
@@ -30,7 +107,9 @@ export default function Chatbot() {
             {/* Header */}
             <div className="border-b px-4 py-3 bg-card rounded-t-lg">
                 <h2 className="text-lg font-semibold">AI Assistant</h2>
-                <p className="text-xs text-muted-foreground">Ask me anything</p>
+                <p className="text-xs text-muted-foreground">
+                    Using {selectedModelData?.name || 'AI Model'}
+                </p>
             </div>
 
             {/* Messages Container */}
@@ -126,25 +205,79 @@ export default function Chatbot() {
                 )}
             </div>
 
-            {/* Input Form */}
-            <div className="border-t p-4 bg-card rounded-b-lg">
-                <form onSubmit={handleSubmit} className="flex gap-2">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type your message..."
-                        disabled={status !== 'ready'}
-                        className="flex-1 px-4 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    />
-                    <button
-                        type="submit"
-                        disabled={status !== 'ready' || !input.trim()}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors text-sm"
-                    >
-                        Send
-                    </button>
-                </form>
+            {/* Prompt Input Component */}
+            <div className="border-t bg-card rounded-b-lg">
+                <PromptInputProvider>
+                    <PromptInput onSubmit={handleSubmit}>
+                        <PromptInputAttachments>
+                            {(attachment) => <PromptInputAttachment data={attachment} />}
+                        </PromptInputAttachments>
+                        <PromptInputBody>
+                            <PromptInputTextarea ref={textareaRef} />
+                        </PromptInputBody>
+                        <PromptInputFooter>
+                            <PromptInputTools>
+                                <PromptInputSpeechButton textareaRef={textareaRef} />
+                                <ModelSelector
+                                    onOpenChange={setModelSelectorOpen}
+                                    open={modelSelectorOpen}
+                                >
+                                    <ModelSelectorTrigger asChild>
+                                        <PromptInputButton>
+                                            {selectedModelData?.chefSlug && (
+                                                <ModelSelectorLogo
+                                                    provider={selectedModelData.chefSlug}
+                                                />
+                                            )}
+                                            {selectedModelData?.name && (
+                                                <ModelSelectorName>
+                                                    {selectedModelData.name}
+                                                </ModelSelectorName>
+                                            )}
+                                        </PromptInputButton>
+                                    </ModelSelectorTrigger>
+                                    <ModelSelectorContent>
+                                        <ModelSelectorInput placeholder="Search models..." />
+                                        <ModelSelectorList>
+                                            <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                                            {["OpenAI", "Anthropic", "Google"].map((chef) => (
+                                                <ModelSelectorGroup heading={chef} key={chef}>
+                                                    {models
+                                                        .filter((m) => m.chef === chef)
+                                                        .map((m) => (
+                                                            <ModelSelectorItem
+                                                                key={m.id}
+                                                                onSelect={() => {
+                                                                    setModel(m.id);
+                                                                    setModelSelectorOpen(false);
+                                                                }}
+                                                                value={m.id}
+                                                            >
+                                                                <ModelSelectorLogo provider={m.chefSlug} />
+                                                                <ModelSelectorName>{m.name}</ModelSelectorName>
+                                                                <ModelSelectorLogoGroup>
+                                                                    {m.providers.map((provider) => (
+                                                                        <ModelSelectorLogo
+                                                                            key={provider}
+                                                                            provider={provider}
+                                                                        />
+                                                                    ))}
+                                                                </ModelSelectorLogoGroup>
+                                                                {model === m.id && (
+                                                                    <CheckIcon className="ml-auto size-4" />
+                                                                )}
+                                                            </ModelSelectorItem>
+                                                        ))}
+                                                </ModelSelectorGroup>
+                                            ))}
+                                        </ModelSelectorList>
+                                    </ModelSelectorContent>
+                                </ModelSelector>
+                            </PromptInputTools>
+                            <PromptInputSubmit status={status} />
+                        </PromptInputFooter>
+                    </PromptInput>
+                </PromptInputProvider>
             </div>
         </div>
     );
