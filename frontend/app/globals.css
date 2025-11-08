@@ -44,6 +44,9 @@
 }
 
 :root {
+  --font-primary: var(--font-montserrat);
+  --font-secondary: var(--font-roboto);
+  --font-condensed: var(--font-roboto-condensed);
   --radius: 0.625rem;
   --background: #F9F6EE;
   --foreground: oklch(0.145 0 0);

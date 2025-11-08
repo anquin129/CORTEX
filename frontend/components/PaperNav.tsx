@@ -92,12 +92,12 @@ export default function PaperNav({
 
     return (
         <aside
-            className={`flex flex-col border-l border-gray-200 transition-all duration-300 rounded-t-lg overflow-hidden ${
+            className={`flex flex-col border-l border-gray-200 transition-all duration-300 rounded-t-lg h-full ${
                 isOpen ? 'w-64' : 'w-16'
             }`}
         >
             {/* Header */}
-            <div className={`flex items-center justify-between bg-maroon h-12 px-3 font-bold text-lg ${textColor}`}>
+            <div className={`flex items-center justify-between bg-maroon h-12 px-3 font-bold text-lg flex-shrink-0 ${textColor}`}>
                 {isOpen && <span className="whitespace-nowrap overflow-hidden">{title}</span>}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -109,7 +109,7 @@ export default function PaperNav({
             </div>
             {/* List */}
             {isOpen && (
-                <ul className="m-0 p-0 flex-1 overflow-y-auto">
+                <ul>
                     {pdfList.map((pdf, index) => (
                         <li
                             key={index}
@@ -131,7 +131,7 @@ export default function PaperNav({
                 </ul>
             )}
             {isOpen && (
-                <div className="p-3 border-t border-gray-200">
+                <div className="p-3 border-gray-200 flex-shrink-0">
                     <Input
                         id="picture"
                         type="file"
