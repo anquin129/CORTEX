@@ -28,6 +28,7 @@ dependencies:
     - google-generativeai>=0.3.0
     - requests>=2.31.0
     - urllib3>=2.0.0
+    - pymupdf==1.24.9
   - pthread-stubs=0.3=h0ce48e5_1
   - python=3.11.14=h6fa692b_0
   - readline=8.3=hc2a1206_0

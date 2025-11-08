@@ -22,6 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from .routes.query import router as query_router
+app.include_router(query_router)
+
+
 # Health check
 @app.get("/health")
 async def health():
