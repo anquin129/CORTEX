@@ -29,6 +29,7 @@ import {
 import React, {useRef, useState} from "react";
 import {CheckIcon} from "lucide-react";
 import type { ChatStatus } from "ai";
+import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
 // Define types
 type MessagePart =
@@ -50,6 +51,7 @@ interface SubmitMessage {
     text: string;
     files?: File[];
 }
+type RetrievedChunk = NonNullable<ParsedResponse["chunks"]>[number];
 
 interface ParsedResponse {
     answer?: string;
@@ -172,11 +174,29 @@ export default function Chatbot() {
         }
     };
 
-    const handleSubmit = (message) => {
-        sendMessage(message);
+
+
+    const handleSubmit = async (
+        message: PromptInputMessage,
+        _event: React.FormEvent<HTMLFormElement>
+    ): Promise<void> => {
+        const files: File[] | undefined = message.files
+            ? message.files
+                .map((f: any) => f.file as File)
+                .filter((f: File | undefined) => !!f)
+            : undefined;
+
+        const submitMessage: SubmitMessage = {
+            text: message.text ?? "",  // ✅ ensures string, not undefined
+            files,
+        };
+
+        await sendMessage(submitMessage);
     };
 
-    const handleDelete = (id) => {
+
+
+    const handleDelete = (id: string) => {
         setMessages(messages.filter(message => message.id !== id));
     };
 
@@ -230,9 +250,9 @@ export default function Chatbot() {
                                     <div className="flex-1">
                                         {message.parts.map((part, index) => {
                                             if (part.type === 'text') {
-                                                let parsed = null;
+                                                let parsed: ParsedResponse | null = null;
                                                 try {
-                                                    parsed = JSON.parse(part.text);
+                                                    parsed = JSON.parse(part.text) as ParsedResponse;
                                                 } catch {
                                                     parsed = null;
                                                 }
@@ -240,23 +260,27 @@ export default function Chatbot() {
                                                 // Render normal text and optional citations/chunks below
                                                 return (
                                                     <div key={index}>
-                                                        <p className="text-sm whitespace-pre-wrap">{parsed?.answer || part.text}</p>
+                                                        <p className="text-sm whitespace-pre-wrap">
+                                                            {parsed?.answer ?? part.text}
+                                                        </p>
 
                                                         {/* Show chunk/citation metadata if present */}
-                                                        {parsed?.chunks && Array.isArray(parsed.chunks) && (
+                                                        {Array.isArray(parsed?.chunks) && (
                                                             <div className="mt-2 border-l-2 border-muted pl-3 text-xs text-muted-foreground space-y-1">
                                                                 <p className="font-semibold">🔎 Retrieved Chunks:</p>
-                                                                {parsed.chunks.map((chunk, i) => (
+                                                                {parsed.chunks.map((chunk: RetrievedChunk, i: number) => (
                                                                     <div key={i} className="bg-muted/30 rounded p-2">
                                                                         <p><strong>Source:</strong> {chunk.source || 'unknown.pdf'}</p>
                                                                         <p><strong>Lines:</strong> {chunk.line_range || 'N/A'}</p>
-                                                                        <p className="italic">{chunk.preview || chunk.text?.slice(0, 120)}...</p>
+                                                                        <p className="italic">
+                                                                            {chunk.preview ?? chunk.text?.slice(0, 120)}...
+                                                                        </p>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         )}
 
-                                                        {parsed?.citations && Array.isArray(parsed.citations) && (
+                                                        {Array.isArray(parsed?.citations) && (
                                                             <div className="mt-2 text-xs text-blue-600">
                                                                 <strong>Citations:</strong> {parsed.citations.join(", ")}
                                                             </div>
@@ -264,6 +288,7 @@ export default function Chatbot() {
                                                     </div>
                                                 );
                                             }
+
 
                                             if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
                                                 return <img key={index} src={part.url} alt={part.filename} className="max-w-full rounded mt-2" />;
