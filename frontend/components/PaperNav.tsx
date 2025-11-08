@@ -66,7 +66,7 @@ export default function PaperNav({
 
     return (
         <aside
-            className={`flex flex-col border-l border-gray-200 transition-all duration-300 ${
+            className={`flex flex-col border-l border-gray-200 transition-all duration-300 rounded-t-lg overflow-hidden ${
                 isOpen ? 'w-64' : 'w-16'
             }`}
         >
