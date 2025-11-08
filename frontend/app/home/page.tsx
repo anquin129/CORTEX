@@ -1,18 +1,16 @@
+// page.tsx
 import Chatbot from '@/components/Chatbot';
+import PaperNav from '@/components/PaperNav';
 
 export default function Home() {
     return (
-        <div className="p-4 flex justify-start">
-
-            {/* Fixed height chatbot */}
-            <div className="w-[70%] min-h-screen">
+        <div className="flex min-h-screen">
+            {/* Chatbot takes remaining space */}
+            <div className="flex-1 p-4">
                 <Chatbot />
             </div>
-
-            {/* Or full viewport height */}
-            {/* <div className="h-screen">
-        <Chatbot />
-      </div> */}
+            {/* PaperNav fixed to right edge */}
+            <PaperNav title="Paper Directory" textColor="text-black "/>
         </div>
     );
 }
