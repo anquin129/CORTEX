@@ -1,5 +1,3 @@
-from fastapi import FastAPI
-from . import cosmos_store
-
-app = FastAPI()
+# backend/api/main.py
+from src.main import app  # ✅ imports your actual FastAPI instance
 
