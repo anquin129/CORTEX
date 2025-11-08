@@ -25,7 +25,7 @@ import {
     PromptInputTextarea,
     PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import {useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {CheckIcon} from "lucide-react";
 
 const models = [
@@ -73,8 +73,13 @@ export default function Chatbot() {
     const [status, setStatus] = useState('idle'); // 'idle', 'submitted', 'streaming', 'error'
     const [error, setError] = useState(null);
     const textareaRef = useRef(null);
+    const messagesEndRef = useRef(null);
 
     const selectedModelData = models.find((m) => m.id === model);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, status]);
 
     const sendMessage = async (message) => {
         const hasText = Boolean(message.text);
@@ -252,6 +257,7 @@ export default function Chatbot() {
                         </div>
                     </div>
                 )}
+                <div ref={messagesEndRef} />
             </div>
 
             {/* Prompt Input Component */}
