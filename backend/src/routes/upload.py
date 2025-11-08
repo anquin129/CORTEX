@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from ..db import local_store  # your TinyDB helper
+from ..db import cosmos_store as local_store
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,11 @@ async def upload_paper(file: UploadFile = File(...)):
         record["mcp_document_id"] = mcp_id
 
     # 6. Add record to TinyDB
-    local_store.add_paper(record)
+    local_store.save_doc(
+        user_id="default_user",
+        filename=record["filename"],
+        text=record.get("extracted_text", "")
+    )
 
     # 7. Return confirmation
     return {

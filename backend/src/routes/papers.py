@@ -1,11 +1,11 @@
 from fastapi import APIRouter
-from ..db import local_store
+from ..db import cosmos_store as local_store
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
 @router.get("")
 async def list_papers():
-    papers = local_store.list_papers()
+    papers = local_store.list_docs()
     # Optionally filter out full paths if you only want safe public data
     simplified = [
         {

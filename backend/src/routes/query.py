@@ -21,7 +21,13 @@ def ask(question: str = Query(...)):
     if not chunks:
         return JSONResponse({"answer": "Not found in the uploaded papers.", "citations": []})
 
-    context = "\n\n".join(chunks)
+
+# Extract 'text' from each chunk dict (or use the string directly)
+    context = "\n\n".join(
+       c["text"] if isinstance(c, dict) and "text" in c else str(c)
+        for c in chunks
+    )
+
 
     # 2️⃣  Call Gemini with context
     try:
