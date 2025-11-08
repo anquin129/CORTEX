@@ -9,7 +9,7 @@ export default function Home() {
     const [selectedPdf, setSelectedPdf] = useState(null);
 
     return (
-        <div className="flex h-screen">
+        <div className="flex h-screen mt-5">
             {/* Chatbot */}
             <div className="w-1/3 p-4 overflow-auto">
                 <Chatbot />

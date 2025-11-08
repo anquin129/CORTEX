@@ -34,15 +34,15 @@ export default function PdfViewer({ pdfUrl }: PdfViewerProps) {
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-gray-50 border-x border-gray-200">
+        <div className="flex-1 flex flex-col p-4">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between rounded-md">
                 <h3 className="text-sm font-semibold text-gray-700">PDF Viewer</h3>
                 <a
                     href={pdfUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    className="text-xs px-3 py-1 bg-[#5c050c] text-white rounded hover:bg-[#8f0913] transition-colors"
                 >
                     Open in New Tab
                 </a>
