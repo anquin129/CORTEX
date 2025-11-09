@@ -1,0 +1,3 @@
+ai-elements/prompt-input.tsx:658:    const response = await fetch(url);
+Chatbot.tsx:150:            const response = await fetch(`http://127.0.0.1:8000/query?question=${encodedQuestion}`);
+PaperNav.tsx:68:                const response = await fetch('http://127.0.0.1:8000/upload', {

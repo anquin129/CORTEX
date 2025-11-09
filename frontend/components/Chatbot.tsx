@@ -147,7 +147,7 @@ export default function Chatbot() {
 
         try {
             const encodedQuestion = encodeURIComponent(message.text);
-            const response = await fetch(`http://127.0.0.1:8000/query?question=${encodedQuestion}`);
+            const response = await fetch(`cortex-production-8481.up.railway.app/query?question=${encodedQuestion}`);
 
             if (!response.ok) {
                 throw new Error('Failed to get response');
