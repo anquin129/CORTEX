@@ -6,6 +6,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from azure.cosmos import CosmosClient
 from ..routes.auth import get_current_user  # import auth dependency
 import os
+from fastapi.responses import FileResponse
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,3 +64,18 @@ async def upload_paper(
     papers_container.create_item(paper_doc)
 
     return {"paper_id": paper_id, "filename": file.filename, "status": "uploaded"}
+
+@router.get("/{paper_id}")
+async def get_paper_file(paper_id: str, user_email: str = Depends(get_current_user)):
+    """Return the actual uploaded PDF file if it belongs to the user."""
+    file_path = UPLOADS_DIR / f"{paper_id}.pdf"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # check ownership
+    query = f"SELECT * FROM c WHERE c.id = '{paper_id}' AND c.user_email = '{user_email}'"
+    items = list(papers_container.query_items(query, enable_cross_partition_query=True))
+    if not items:
+        raise HTTPException(status_code=403, detail="Not authorized for this file")
+
+    return FileResponse(file_path, media_type="application/pdf")

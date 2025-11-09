@@ -65,9 +65,30 @@ export default function PaperNav({
     }, []);
 
 
-    const handlePdfClick = (pdf: PdfItem, index: number) => {
+    const handlePdfClick = async (pdf: PdfItem, index: number) => {
         setSelectedIndex(index);
-        onSelectPdf(pdf.url);
+
+        // If this PDF came from backend (has paperId)
+        if (pdf.paperId) {
+            const token = localStorage.getItem('token');
+            const backendUrl = `https://cortex-production-8481.up.railway.app/upload/${pdf.paperId}`;
+
+            // Create an authenticated fetch to get the PDF blob
+            const res = await fetch(backendUrl, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                console.error('Failed to fetch PDF');
+                return;
+            }
+
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            onSelectPdf(blobUrl);  // pass URL to your PDF viewer
+        } else {
+            // locally uploaded preview
+            onSelectPdf(pdf.url);
+        }
     };
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
