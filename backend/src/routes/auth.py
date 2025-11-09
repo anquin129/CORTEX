@@ -46,6 +46,13 @@ async def signup(user: UserIn):
     users = list(users_container.query_items(query, enable_cross_partition_query=True))
     if users:
         raise HTTPException(status_code=400, detail="Email already registered")
+    if not isinstance(password, str):
+        raise HTTPException(status_code=400, detail="Invalid password format")
+
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password too long (max 72 bytes)")
+
+
 
     hashed_pw = pwd_context.hash(password)
     user_doc = {
