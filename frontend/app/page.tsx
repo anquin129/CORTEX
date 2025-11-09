@@ -5,6 +5,7 @@ import Chatbot from "@/components/Chatbot";
 import PdfViewer from "@/components/PdfViewer";
 import PaperNav from "@/components/PaperNav";
 import NavBar from "@/components/NavBar";
+import WelcomeScreen from "@/components/WelcomeScreen";
 
 
 interface PdfItem {
@@ -14,6 +15,7 @@ interface PdfItem {
 }
 
 export default function Home() {
+    const [showWelcome, setShowWelcome] = useState(true);
     const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
     const [pdfList, setPdfList] = useState<PdfItem[]>([]);
     const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
@@ -37,6 +39,10 @@ export default function Home() {
     };
 
 
+
+    if (showWelcome) {
+        return <WelcomeScreen onComplete={() => setShowWelcome(false)} />;
+    }
 
     return (
         <div className="flex flex-col h-screen">
