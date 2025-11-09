@@ -26,11 +26,12 @@ import {
     PromptInputTextarea,
     PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import React, { useRef, useState } from "react";
-import { CheckIcon } from "lucide-react";
+import React, {useRef, useState} from "react";
+import {CheckIcon} from "lucide-react";
 import type { ChatStatus } from "ai";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
+// Define types
 type MessagePart =
     | { type: 'text'; text: string }
     | { type: 'file'; mediaType: string; url: string; filename: string };
@@ -54,7 +55,6 @@ interface SubmitMessage {
     text: string;
     files?: File[];
 }
-
 type RetrievedChunk = NonNullable<ParsedResponse["chunks"]>[number];
 
 interface ParsedResponse {
@@ -78,6 +78,8 @@ interface ParsedResponse {
         relevance_score?: number;
     }>;
 }
+
+
 
 const models = [
     {
@@ -117,11 +119,20 @@ const models = [
     },
 ];
 
+interface ReasoningStep {
+    step: string;
+    time_spent: number;
+}
+
 export default function Chatbot({ onCitationClick }: ChatbotProps) {
     const [model, setModel] = useState<string>(models[0].id);
     const [modelSelectorOpen, setModelSelectorOpen] = useState<boolean>(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [status, setStatus] = useState<ChatStatus>("ready");
+    const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>([]);
+    const [isReasoning, setIsReasoning] = useState<boolean>(false);
+    const [finalResult, setFinalResult] = useState<any>(null);
+
     const [error, setError] = useState<Error | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -135,6 +146,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             return;
         }
 
+        // Add user message with proper typing
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
@@ -142,6 +154,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             metadata: { createdAt: Date.now() }
         };
 
+        // Handle file attachments
         if (message.files?.length) {
             message.files.forEach((file: File) => {
                 userMessage.parts.push({
@@ -156,44 +169,86 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
         setMessages(prev => [...prev, userMessage]);
         setStatus('submitted');
         setError(null);
+        setReasoningSteps([]);
+        setIsReasoning(true);
+        setFinalResult(null);
 
         try {
+            // Stream reasoning steps
             const encodedQuestion = encodeURIComponent(message.text);
-            const token = localStorage.getItem("token"); // ✅ get token from localStorage
+            // Use localhost for development, or environment variable for production
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+            const reasoningResponse = await fetch(`${apiUrl}/reasoning?question=${encodedQuestion}&collection_id=1`);
 
-            const response = await fetch(
-                `https://cortex-production-8481.up.railway.app/query?question=${encodedQuestion}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`, // ✅ include token
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to get response');
+            if (!reasoningResponse.ok) {
+                throw new Error('Failed to get reasoning');
             }
 
-            const data = await response.json();
+            const reader = reasoningResponse.body?.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-            const assistantMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                role: 'assistant',
-                parts: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-                metadata: {
-                    createdAt: Date.now(),
-                    model: model
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.step === 'done' && data.result) {
+                                    setFinalResult(data.result);
+                                    setIsReasoning(false);
+                                    
+                                    // Add assistant message with final result
+                                    const assistantMessage: Message = {
+                                        id: (Date.now() + 1).toString(),
+                                        role: 'assistant',
+                                        parts: [{ type: 'text', text: data.result.answer || JSON.stringify(data.result, null, 2) }],
+                                        metadata: {
+                                            createdAt: Date.now(),
+                                            model: model
+                                        }
+                                    };
+                                    setMessages(prev => [...prev, assistantMessage]);
+                                    setStatus('ready');
+                                } else if (data.step && data.step !== 'done') {
+                                    // Update reasoning steps
+                                    setReasoningSteps(prev => {
+                                        // Find if this step already exists (by matching step text)
+                                        const existingIndex = prev.findIndex(s => s.step === data.step);
+                                        if (existingIndex >= 0) {
+                                            // Update existing step with time
+                                            const updated = [...prev];
+                                            updated[existingIndex] = { step: data.step, time_spent: data.time_spent };
+                                            return updated;
+                                        } else {
+                                            // Add new step
+                                            return [...prev, { step: data.step, time_spent: data.time_spent }];
+                                        }
+                                    });
+                                }
+                            } catch (e) {
+                                console.error('Failed to parse reasoning data:', e);
+                            }
+                        }
+                    }
                 }
-            };
-
-            setMessages(prev => [...prev, assistantMessage]);
-            setStatus('ready');
+            }
         } catch (err) {
             setError(err as Error);
             setStatus('error');
+            setIsReasoning(false);
         }
     };
+
+
 
     const handleSubmit = async (
         message: PromptInputMessage,
@@ -206,12 +261,14 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             : undefined;
 
         const submitMessage: SubmitMessage = {
-            text: message.text ?? "",
+            text: message.text ?? "",  // ✅ ensures string, not undefined
             files,
         };
 
         await sendMessage(submitMessage);
     };
+
+
 
     const handleDelete = (id: string) => {
         setMessages(messages.filter(message => message.id !== id));
@@ -237,6 +294,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
 
     return (
         <div className="flex flex-col h-full bg-background rounded-lg border">
+            {/* Header */}
             <div className="border-b px-4 py-3 bg-card rounded-t-lg">
                 <h2 className="text-lg font-semibold">Research Assistant</h2>
                 <p className="text-xs text-muted-foreground">
@@ -244,6 +302,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                 </p>
             </div>
 
+            {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -278,10 +337,11 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                     parsed = null;
                                                 }
 
-                                                const mostRelevantCitation =
-                                                    Array.isArray(parsed?.citations) && parsed.citations.length > 0
-                                                        ? parsed.citations[0]
-                                                        : null;
+                                                // Get the most relevant citation (first one, as they're sorted by relevance)
+                                                const mostRelevantCitation = Array.isArray(parsed?.citations) && parsed.citations.length > 0
+                                                    ? parsed.citations[0]
+                                                    : null;
+
 
                                                 return (
                                                     <div key={index}>
@@ -289,6 +349,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                             {parsed?.answer ?? part.text}
                                                         </p>
 
+                                                        {/* Show only the most relevant page and chunk */}
                                                         {mostRelevantCitation && (
                                                             <div
                                                                 className="mt-2 text-xs text-muted-foreground cursor-pointer hover:underline"
@@ -298,9 +359,11 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                                 Chunk {mostRelevantCitation.citation?.chunk_id?.split('_c')[1] || 'N/A'}
                                                             </div>
                                                         )}
+
                                                     </div>
                                                 );
                                             }
+
 
                                             if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
                                                 return <img key={index} src={part.url} alt={part.filename} className="max-w-full rounded mt-2" />;
@@ -330,17 +393,47 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                     ))
                 )}
 
-                {(status === 'submitted' || status === 'streaming') && (
-                    <div className="flex justify-start">
-                        <div className="bg-muted rounded-lg px-4 py-2">
-                            <div className="flex items-center gap-3">
-                                <div className="flex space-x-2">
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                {(status === 'submitted' || status === 'streaming' || isReasoning) && (
+                    <div className="flex flex-col gap-2">
+                        {/* Reasoning Steps */}
+                        {reasoningSteps.length > 0 && (
+                            <div className="bg-muted rounded-lg px-4 py-3 border-l-4 border-primary">
+                                <div className="text-sm font-semibold mb-2">Agent Reasoning</div>
+                                <div className="space-y-2">
+                                    {reasoningSteps.map((step, index) => (
+                                        <div key={index} className="text-sm">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <span className="text-foreground flex-1">{step.step}</span>
+                                                {step.time_spent > 0 ? (
+                                                    <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                                        {step.time_spent}s
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                                        ...
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+                        )}
+                        
+                        {/* Loading indicator when no steps yet */}
+                        {reasoningSteps.length === 0 && (
+                            <div className="flex justify-start">
+                                <div className="bg-muted rounded-lg px-4 py-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex space-x-2">
+                                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                            <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -359,12 +452,14 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                 )}
             </div>
 
+            {/* Prompt Input Component */}
             <div className="border-t bg-card rounded-b-lg">
                 <PromptInputProvider>
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputAttachments>
                             {(attachment) => <PromptInputAttachment data={attachment} /> as React.ReactNode}
                         </PromptInputAttachments>
+
 
                         <PromptInputBody>
                             <PromptInputTextarea ref={textareaRef} />
@@ -393,6 +488,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                         <ModelSelectorInput placeholder="Search models..." />
                                         <ModelSelectorList>
                                             <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+
                                             <div>
                                                 {["OpenAI", "Anthropic", "Google"].map((chef) => (
                                                     <ModelSelectorGroup heading={chef} key={chef}>

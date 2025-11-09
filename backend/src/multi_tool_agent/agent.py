@@ -133,6 +133,137 @@ class CortexAgent:
         logger.info(f"Agent calling tool: {function_name} with args: {args}")
         return self.mcp_client.call_tool(function_name, args)
     
+    def chat_stream_reasoning(
+        self,
+        collection_id: int,
+        question: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None
+    ):
+        """Chat with the agent and stream reasoning steps with timestamps.
+        
+        Args:
+            collection_id: The collection ID to query
+            question: The user's question
+            conversation_history: Optional conversation history for context
+            
+        Yields:
+            Dict with keys: step, time_spent
+        """
+        verified_citations = []
+        result = None
+        
+        try:
+            # Step 1: Query the collection using MCP tool
+            step_start = time.time()
+            query_result = self._call_tool("query_collection", {
+                "collection_id": collection_id,
+                "question": question,
+                "max_sources": 5
+            })
+            time_spent = round(time.time() - step_start, 2)
+            yield {"step": f"Querying collection {collection_id} with question", "time_spent": time_spent}
+            
+            initial_answer = query_result.get("answer", "")
+            citations_data = query_result.get("citations", [])
+            
+            # This is just a status update, no significant time
+            yield {"step": f"Received answer with {len(citations_data)} citations", "time_spent": 0}
+            
+            # Step 2: Extract and verify citations
+            step_start = time.time()
+            chunk_ids = extract_citation_ids(initial_answer)
+            if not chunk_ids and citations_data:
+                chunk_ids = [
+                    cit.get("chunk_id")
+                    for cit in citations_data[:5]
+                    if cit.get("chunk_id") is not None
+                ]
+            time_spent = round(time.time() - step_start, 2)
+            yield {"step": f"Extracting {len(chunk_ids)} citation chunks to verify", "time_spent": time_spent}
+            
+            # Verify each chunk
+            chunk_ids_to_verify = chunk_ids[:5]
+            for idx, chunk_id in enumerate(chunk_ids_to_verify, 1):
+                step_start = time.time()
+                try:
+                    verify_result = self._call_tool("verify_chunk", {"chunk_id": chunk_id})
+                    verified_citations.append({
+                        "chunk_id": chunk_id,
+                        "verification_status": "verified",
+                        "paper_title": verify_result.get("title"),
+                        "page_num": verify_result.get("page_num"),
+                        "snippet": verify_result.get("text", "")[:200],
+                        "pdf_url": verify_result.get("pdf_url"),
+                        "paper_id": verify_result.get("paper_id"),
+                    })
+                except Exception as e:
+                    verified_citations.append({
+                        "chunk_id": chunk_id,
+                        "verification_status": "failed",
+                        "error": str(e)
+                    })
+                
+                time_spent = round(time.time() - step_start, 2)
+                yield {"step": f"Verifying citation {idx}/{len(chunk_ids_to_verify)} (chunk {chunk_id})", "time_spent": time_spent}
+            
+            # Step 3: Use Gemini to generate a comprehensive answer with verified citations
+            step_start = time.time()
+            
+            # Build prompt for Gemini
+            citations_text = "\n".join([
+                f"- {cit.get('paper_title', 'Unknown')} (page {cit.get('page_num', 'N/A')}): {cit.get('snippet', '')[:100]}..."
+                for cit in verified_citations if cit.get("verification_status") == "verified"
+            ])
+            
+            prompt = f"""You are Cortex Assistant, an AI agent helping researchers understand research papers.
+
+User Question: {question}
+
+Initial Answer from Collection Query:
+{initial_answer}
+
+Verified Citations:
+{citations_text}
+
+Based on the initial answer and verified citations above, provide a comprehensive, well-structured answer that:
+1. Directly addresses the user's question
+2. Incorporates information from the verified citations
+3. Includes paper titles and page numbers where relevant
+4. Is clear, accurate, and well-formatted
+
+Answer:"""
+            
+            # Generate answer with Gemini
+            response = self.model.generate_content(prompt)
+            final_answer = response.text if response.text else initial_answer
+            time_spent = round(time.time() - step_start, 2)
+            yield {"step": "Generating comprehensive answer with Gemini", "time_spent": time_spent}
+            
+            step_data = {"step": "Answer generated successfully", "time_spent": 0}
+            yield step_data
+            
+            result = {
+                "answer": final_answer,
+                "citations": verified_citations,
+                "model": self.model_name,
+                "initial_answer": initial_answer
+            }
+            
+        except Exception as e:
+            logger.error(f"Agent chat failed: {e}", exc_info=True)
+            step_start = time.time()
+            time_spent = round(time.time() - step_start, 2)
+            step_data = {"step": f"Error: {str(e)}", "time_spent": time_spent}
+            yield step_data
+            result = {
+                "answer": f"I encountered an error: {str(e)}",
+                "citations": verified_citations,
+                "error": str(e)
+            }
+        
+        # Yield final result
+        yield {"step": "done", "result": result}
+    
     def chat(
         self,
         collection_id: int,
