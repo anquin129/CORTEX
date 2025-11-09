@@ -18,12 +18,6 @@ interface PdfItem {
     url: string;
 }
 
-const initialPdfs: PdfItem[] = [
-    {name: 'Research Paper 1', url: '/pdfs/paper1.pdf'},
-    {name: 'Research Paper 2', url: '/pdfs/paper2.pdf'},
-    {name: 'Research Paper 3', url: '/pdfs/paper3.pdf'},
-];
-
 export default function PaperNav({
                                      onSelectPdf,
                                      selectedPdf,
@@ -32,7 +26,7 @@ export default function PaperNav({
                                  }: PaperNavProps) {
     const [isOpen, setIsOpen] = useState(true);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-    const [pdfList, setPdfList] = useState<PdfItem[]>(initialPdfs);
+    const [pdfList, setPdfList] = useState<PdfItem[]>([]);
     const [isUploading, setIsUploading] = useState(false);
 
     const handlePdfClick = (pdf: PdfItem, index: number) => {
