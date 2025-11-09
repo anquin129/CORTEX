@@ -51,31 +51,17 @@ interface SubmitMessage {
     text: string;
     files?: File[];
 }
-
-interface Citation {
-    chunk_id: string | number;
-    verification_status: string;
-    paper_title?: string;
-    page_num?: number;
-    snippet?: string;
-    pdf_url?: string;
-    paper_id?: string;
-    relevance_score?: number;
-    text?: string;
-    citation?: {
-        document_id?: string;
-        filename?: string;
-        page?: number;
-        location?: string;
-        chunk_id?: string | number;
-    };
-}
+type RetrievedChunk = NonNullable<ParsedResponse["chunks"]>[number];
 
 interface ParsedResponse {
     answer?: string;
-    citations?: Citation[];
-    reasoning?: string[];
-    model?: string;
+    chunks?: Array<{
+        source?: string;
+        line_range?: string;
+        preview?: string;
+        text?: string;
+    }>;
+    citations?: string[];
 }
 
 const models = [
@@ -271,21 +257,32 @@ export default function Chatbot() {
                                                     parsed = null;
                                                 }
 
-                                                // Get the most relevant citation (first one from the grounded generation)
-                                                const mostRelevantCitation = Array.isArray(parsed?.citations) && parsed.citations.length > 0
-                                                    ? parsed.citations[0]
-                                                    : null;
-
+                                                // Render normal text and optional citations/chunks below
                                                 return (
                                                     <div key={index}>
                                                         <p className="text-sm whitespace-pre-wrap">
                                                             {parsed?.answer ?? part.text}
                                                         </p>
 
-                                                        {/* Show only the most relevant page and chunk */}
-                                                        {mostRelevantCitation && mostRelevantCitation.citation && (
-                                                            <div className="mt-2 text-xs text-muted-foreground">
-                                                                <strong>Context:</strong> Page {mostRelevantCitation.citation.page || mostRelevantCitation.page_num || 'N/A'}, Chunk {mostRelevantCitation.chunk_id || 'N/A'}
+                                                        {/* Show chunk/citation metadata if present */}
+                                                        {Array.isArray(parsed?.chunks) && (
+                                                            <div className="mt-2 border-l-2 border-muted pl-3 text-xs text-muted-foreground space-y-1">
+                                                                <p className="font-semibold">🔎 Retrieved Chunks:</p>
+                                                                {parsed.chunks.map((chunk: RetrievedChunk, i: number) => (
+                                                                    <div key={i} className="bg-muted/30 rounded p-2">
+                                                                        <p><strong>Source:</strong> {chunk.source || 'unknown.pdf'}</p>
+                                                                        <p><strong>Lines:</strong> {chunk.line_range || 'N/A'}</p>
+                                                                        <p className="italic">
+                                                                            {chunk.preview ?? chunk.text?.slice(0, 120)}...
+                                                                        </p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {Array.isArray(parsed?.citations) && (
+                                                            <div className="mt-2 text-xs text-blue-600">
+                                                                <strong>Citations:</strong> {parsed.citations.join(", ")}
                                                             </div>
                                                         )}
                                                     </div>
