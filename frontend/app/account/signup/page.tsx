@@ -48,7 +48,7 @@ export default function SignupPage() {
         }
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://cortex-production-8481.up.railway.app'}/signup`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://cortex-production-8481.up.railway.app'}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(result.data),

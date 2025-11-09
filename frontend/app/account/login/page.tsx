@@ -49,7 +49,7 @@ export default function LoginPage() {
 
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://cortex-production-8481.up.railway.app'}/login`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://cortex-production-8481.up.railway.app'}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(result.data),
