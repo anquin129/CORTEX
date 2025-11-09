@@ -61,8 +61,13 @@ interface ParsedResponse {
         preview?: string;
         text?: string;
     }>;
-    citations?: string[];
+    citations?: Array<{
+        chunk_id?: string;
+        page?: number | string;
+        source?: string;
+    }>;
 }
+
 
 const models = [
     {
@@ -271,9 +276,14 @@ export default function Chatbot() {
                                                         {/* Show only the most relevant page and chunk */}
                                                         {mostRelevantCitation && (
                                                             <div className="mt-2 text-xs text-muted-foreground">
-                                                                <strong>Context:</strong> Page {mostRelevantCitation.citation?.page || 'N/A'}, Chunk {mostRelevantCitation.citation?.chunk_id?.split('_c')[1] || 'N/A'}
+                                                                <strong>Context:</strong>{" "}
+                                                                Page {mostRelevantCitation.page || "N/A"}, Chunk{" "}
+                                                                {mostRelevantCitation.chunk_id
+                                                                    ? mostRelevantCitation.chunk_id.split("_c")[1] || "N/A"
+                                                                    : "N/A"}
                                                             </div>
                                                         )}
+
                                                     </div>
                                                 );
                                             }
