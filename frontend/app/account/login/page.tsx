@@ -36,14 +36,17 @@ export default function LoginPage() {
 
         if (!result.success) {
             const fieldErrors: { [key: string]: string } = {};
-            result.error.errors.forEach((err) => {
+
+            result.error.issues.forEach((err) => {
                 if (err.path[0]) {
                     fieldErrors[err.path[0] as string] = err.message;
                 }
             });
+
             setErrors(fieldErrors);
             return;
         }
+
 
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://cortex-production-8481.up.railway.app'}/login`, {
