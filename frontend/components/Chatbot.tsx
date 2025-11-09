@@ -239,7 +239,7 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
         <div className="flex flex-col h-full bg-background rounded-lg border">
             {/* Header */}
             <div className="border-b px-4 py-3 bg-card rounded-t-lg">
-                <h2 className="text-lg font-semibold">AI Assistant</h2>
+                <h2 className="text-lg font-semibold">Research Assistant</h2>
                 <p className="text-xs text-muted-foreground">
                     Using {selectedModelData?.name || 'AI Model'}
                 </p>
