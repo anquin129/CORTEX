@@ -26,12 +26,11 @@ import {
     PromptInputTextarea,
     PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import React, {useRef, useState} from "react";
-import {CheckIcon} from "lucide-react";
+import React, { useRef, useState } from "react";
+import { CheckIcon } from "lucide-react";
 import type { ChatStatus } from "ai";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
-// Define types
 type MessagePart =
     | { type: 'text'; text: string }
     | { type: 'file'; mediaType: string; url: string; filename: string };
@@ -55,6 +54,7 @@ interface SubmitMessage {
     text: string;
     files?: File[];
 }
+
 type RetrievedChunk = NonNullable<ParsedResponse["chunks"]>[number];
 
 interface ParsedResponse {
@@ -78,8 +78,6 @@ interface ParsedResponse {
         relevance_score?: number;
     }>;
 }
-
-
 
 const models = [
     {
@@ -124,7 +122,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
     const [modelSelectorOpen, setModelSelectorOpen] = useState<boolean>(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [status, setStatus] = useState<ChatStatus>("ready");
-
     const [error, setError] = useState<Error | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -138,7 +135,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             return;
         }
 
-        // Add user message with proper typing
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
@@ -146,7 +142,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             metadata: { createdAt: Date.now() }
         };
 
-        // Handle file attachments
         if (message.files?.length) {
             message.files.forEach((file: File) => {
                 userMessage.parts.push({
@@ -164,7 +159,17 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
 
         try {
             const encodedQuestion = encodeURIComponent(message.text);
-            const response = await fetch(`https://cortex-production-8481.up.railway.app/query?question=${encodedQuestion}`);
+            const token = localStorage.getItem("token"); // ✅ get token from localStorage
+
+            const response = await fetch(
+                `https://cortex-production-8481.up.railway.app/query?question=${encodedQuestion}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`, // ✅ include token
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
             if (!response.ok) {
                 throw new Error('Failed to get response');
@@ -172,7 +177,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
 
             const data = await response.json();
 
-            // Add assistant message
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -191,8 +195,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
         }
     };
 
-
-
     const handleSubmit = async (
         message: PromptInputMessage,
         _event: React.FormEvent<HTMLFormElement>
@@ -204,14 +206,12 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
             : undefined;
 
         const submitMessage: SubmitMessage = {
-            text: message.text ?? "",  // ✅ ensures string, not undefined
+            text: message.text ?? "",
             files,
         };
 
         await sendMessage(submitMessage);
     };
-
-
 
     const handleDelete = (id: string) => {
         setMessages(messages.filter(message => message.id !== id));
@@ -237,7 +237,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
 
     return (
         <div className="flex flex-col h-full bg-background rounded-lg border">
-            {/* Header */}
             <div className="border-b px-4 py-3 bg-card rounded-t-lg">
                 <h2 className="text-lg font-semibold">Research Assistant</h2>
                 <p className="text-xs text-muted-foreground">
@@ -245,7 +244,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                 </p>
             </div>
 
-            {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -280,11 +278,10 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                     parsed = null;
                                                 }
 
-                                                // Get the most relevant citation (first one, as they're sorted by relevance)
-                                                const mostRelevantCitation = Array.isArray(parsed?.citations) && parsed.citations.length > 0
-                                                    ? parsed.citations[0]
-                                                    : null;
-
+                                                const mostRelevantCitation =
+                                                    Array.isArray(parsed?.citations) && parsed.citations.length > 0
+                                                        ? parsed.citations[0]
+                                                        : null;
 
                                                 return (
                                                     <div key={index}>
@@ -292,7 +289,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                             {parsed?.answer ?? part.text}
                                                         </p>
 
-                                                        {/* Show only the most relevant page and chunk */}
                                                         {mostRelevantCitation && (
                                                             <div
                                                                 className="mt-2 text-xs text-muted-foreground cursor-pointer hover:underline"
@@ -302,11 +298,9 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                                                 Chunk {mostRelevantCitation.citation?.chunk_id?.split('_c')[1] || 'N/A'}
                                                             </div>
                                                         )}
-
                                                     </div>
                                                 );
                                             }
-
 
                                             if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
                                                 return <img key={index} src={part.url} alt={part.filename} className="max-w-full rounded mt-2" />;
@@ -365,14 +359,12 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                 )}
             </div>
 
-            {/* Prompt Input Component */}
             <div className="border-t bg-card rounded-b-lg">
                 <PromptInputProvider>
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputAttachments>
                             {(attachment) => <PromptInputAttachment data={attachment} /> as React.ReactNode}
                         </PromptInputAttachments>
-
 
                         <PromptInputBody>
                             <PromptInputTextarea ref={textareaRef} />
@@ -401,7 +393,6 @@ export default function Chatbot({ onCitationClick }: ChatbotProps) {
                                         <ModelSelectorInput placeholder="Search models..." />
                                         <ModelSelectorList>
                                             <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-
                                             <div>
                                                 {["OpenAI", "Anthropic", "Google"].map((chef) => (
                                                     <ModelSelectorGroup heading={chef} key={chef}>
