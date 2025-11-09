@@ -38,6 +38,7 @@ httpx==0.28.1
 idna==3.11
 invoke==2.2.1
 jmespath==1.0.1
+learn==1.0.0
 packaging==24.2
 paramiko==4.0.0
 passlib==1.7.4
