@@ -14,20 +14,28 @@ export default function PdfViewer({pdfUrl, targetPage = 1}: PdfViewerProps) {
 
     useEffect(() => {
         if (scrollToRef.current && targetPage) {
-            // Small delay to ensure PDF is loaded
             setTimeout(() => {
                 scrollToRef.current?.({
+                    id: `page-${targetPage}`,
+                    content: { text: "" },
+                    comment: { text: "" },
                     position: {
                         pageNumber: targetPage,
-                        boundingRect: { x1: 0, y1: 0, x2: 0, y2: 0, width: 0, height: 0 },
+                        boundingRect: {
+                            x1: 0,
+                            y1: 0,
+                            x2: 0,
+                            y2: 0,
+                            width: 0,
+                            height: 0,
+                        },
                         rects: [],
                     },
-                    content: { text: '' },
-                    id: `page-${targetPage}`,
-                } as IHighlight);
+                } as unknown as IHighlight);
             }, 100);
         }
     }, [pdfUrl, targetPage]);
+
 
     if (!pdfUrl) {
         return (
@@ -78,7 +86,7 @@ export default function PdfViewer({pdfUrl, targetPage = 1}: PdfViewerProps) {
                                 <PdfHighlighter
                                     pdfDocument={pdfDocument}
                                     enableAreaSelection={(event) => false}
-                                    highlights={[]}
+                                    highlights={[] as IHighlight[]}
                                     onSelectionFinished={(
                                         position: ScaledPosition,
                                         content: { text?: string; image?: string },
