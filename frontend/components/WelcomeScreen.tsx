@@ -11,6 +11,54 @@ const getRandomChar = () => {
     return chars[Math.floor(Math.random() * chars.length)];
 };
 
+// Generate realistic keyboard typing sound
+const playTypewriterClick = () => {
+    try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const now = audioContext.currentTime;
+        
+        // Main key press - soft click (keyboard key mechanism)
+        const clickOsc = audioContext.createOscillator();
+        const clickGain = audioContext.createGain();
+        clickOsc.type = 'sine';
+        // Slight variation in frequency for realism (200-300Hz range)
+        clickOsc.frequency.value = 250 + Math.random() * 50;
+        clickOsc.connect(clickGain);
+        clickGain.connect(audioContext.destination);
+        
+        // Softer attack and decay for keyboard feel
+        clickGain.gain.setValueAtTime(0, now);
+        clickGain.gain.linearRampToValueAtTime(0.15, now + 0.002); // Softer attack
+        clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.06); // Gentle decay
+        
+        clickOsc.start(now);
+        clickOsc.stop(now + 0.06);
+        
+        // Low thud - key bottoming out (realistic keyboard sound)
+        const thudOsc = audioContext.createOscillator();
+        const thudGain = audioContext.createGain();
+        thudOsc.type = 'sine';
+        thudOsc.frequency.value = 60 + Math.random() * 20; // 60-80Hz for thud
+        thudOsc.connect(thudGain);
+        thudGain.connect(audioContext.destination);
+        
+        thudGain.gain.setValueAtTime(0, now);
+        thudGain.gain.linearRampToValueAtTime(0.08, now + 0.003); // Delayed slightly
+        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        
+        thudOsc.start(now);
+        thudOsc.stop(now + 0.08);
+        
+        // Clean up
+        setTimeout(() => {
+            audioContext.close();
+        }, 150);
+    } catch (error) {
+        // Silently fail if audio context is not available
+        console.debug('Audio context not available:', error);
+    }
+};
+
 export default function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
     const [showCursor, setShowCursor] = useState(true);
     const [displayText, setDisplayText] = useState('');
@@ -77,6 +125,7 @@ export default function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
                 } else {
                     // Reveal the actual letter
                     setDisplayText(text.slice(0, currentIndex + 1));
+                    playTypewriterClick(); // Play click sound when letter is revealed
                     currentIndex++;
                     randomCycleCount = 0;
                     delayCount = delayCycles; // Wait before starting next letter's random cycle
